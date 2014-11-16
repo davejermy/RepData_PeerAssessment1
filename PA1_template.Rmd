@@ -13,30 +13,55 @@ rawdata <- read.csv("activity.csv")
 dailysteps <- aggregate(steps ~ date, data = rawdata,sum)
 
 ```
+
 ## What is mean total number of steps taken per day?
-```{r}
+Let's start by looking at distribution of daily step totals.  The following chart shows the frequency of the daily total in ranges of 500 steps.
+
+```{r, fig.width=10}
 library(ggplot2)
 plot1 <- ggplot(dailysteps, aes(steps))
 plot1 + geom_histogram(fill = "darkgreen",
                        binwidth = 500) + 
     theme_bw(base_size = 12)
-meansteps <- round(mean(dailysteps$steps),2)
+```
+
+But what about the average daily total?
+```{r}
+meansteps <- as.character(round(mean(dailysteps$steps),2))
 mediansteps <- median(dailysteps$steps)
 ```
-The mean total daily steps is `r meansteps` and the median is `r mediansteps`.
-
+The mean total daily steps is `r meansteps` and the median is `r mediansteps`.  
+  
 ## What is the average daily activity pattern?
-```{r}
-
+How does the time interval pattern change across the day?
+```{r,fig.width=10}
+intmeansteps <- aggregate(steps ~ interval, data = rawdata, mean)
+plot2 <- ggplot(intmeansteps, aes(interval, steps))
+plot2 + geom_line()+ 
+     theme_bw(base_size = 12)
 ```
 
+So, what time of day is the most active?  We can answer this by looking at the time interval with the largest average steps.
+```{r}
+maxint <- round(head(intmeansteps[order(-intmeansteps$steps),],1),2)
+```
+
+The time interval with the highest number of steps across the period is `r maxint[,1]`, with an average of `r maxint[,2]` steps each day.
 
 ## Imputing missing values
+In this sort of analysis, large volumes of missing values have the potential to skew the results.  Let's look at the scale of the missing values in this dataset.  
+
+```{r}
+na_rows <- nrow(rawdata[is.na(rawdata$steps),])
+raw_rows <- nrow(rawdata)
+missing <- round(nrow(rawdata[is.na(rawdata$steps),]) / nrow(rawdata),0)
+```
+There are `r na_rows` missing values.  So, for `r missing`% of the rows in the raw data, we don't know how many steps were taken.  
+If we assume that the number of steps taken during each interval where that is missing is equal to the mean of stps taken in that interval across the whole time period, how will that change the results we've calculated above?  
+  
 ```{r}
 
 ```
-
-
 ## Are there differences in activity patterns between weekdays and weekends?
 ```{r}
 
