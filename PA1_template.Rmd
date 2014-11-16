@@ -10,7 +10,6 @@ output:
 ```{r}
 unzip("activity.zip", "activity.csv")
 rawdata <- read.csv("activity.csv")
-dailysteps <- aggregate(steps ~ date, data = rawdata,sum)
 
 ```
 
@@ -18,6 +17,7 @@ dailysteps <- aggregate(steps ~ date, data = rawdata,sum)
 Let's start by looking at distribution of daily step totals.  The following chart shows the frequency of the daily total in ranges of 500 steps.
 
 ```{r, fig.width=10}
+dailysteps <- aggregate(steps ~ date, data = rawdata,sum)
 library(ggplot2)
 plot1 <- ggplot(dailysteps, aes(steps))
 plot1 + geom_histogram(fill = "darkgreen",
@@ -54,15 +54,46 @@ In this sort of analysis, large volumes of missing values have the potential to 
 ```{r}
 na_rows <- nrow(rawdata[is.na(rawdata$steps),])
 raw_rows <- nrow(rawdata)
-missing <- round(nrow(rawdata[is.na(rawdata$steps),]) / nrow(rawdata),0)
+missing <- round(nrow(rawdata[is.na(rawdata$steps),]) / nrow(rawdata) * 100,0)
 ```
-There are `r na_rows` missing values.  So, for `r missing`% of the rows in the raw data, we don't know how many steps were taken.  
-If we assume that the number of steps taken during each interval where that is missing is equal to the mean of stps taken in that interval across the whole time period, how will that change the results we've calculated above?  
   
+There are `r na_rows` missing values.  So, for `r missing`% of the rows in the raw data, we don't know how many steps were taken.  
+  
+If we assume that the number of steps taken during each interval where that is missing is equal to the mean of steps taken in that interval across the whole time period, how will that change the results we've calculated above?  
+  
+To answer this, we'll duplicate the original data, replace the missing values and then rerun the first chart and recalculate the averages.
 ```{r}
+impdata <- rawdata ##Duplicate raw dataset
+## Add new column to hold the mean steps for the interval
+impdata$avesteps <- round(intmeansteps[match(impdata$interval,
+                                             intmeansteps$interval)
+                                       ,2] ## Take the avg steps from intmeansteps dataset
+                          ,0) ## Rounded to 0 dp to give integer value
+impdata[is.na(impdata$steps),1] <- impdata[is.na(impdata$steps),4] ## Update missing steps
+impdata <- impdata[,1:3] ## Remove the additional column
 
+dailysteps2 <- aggregate(steps ~ date, data = impdata,sum)
+meansteps2 <- as.character(round(mean(dailysteps2$steps),2))
+mediansteps2 <- as.character(median(dailysteps2$steps))
+plot3 <- ggplot(dailysteps2, aes(steps))
+plot3 + geom_histogram(fill = "darkgreen",
+                       binwidth = 500) + 
+    theme_bw(base_size = 12)
 ```
-## Are there differences in activity patterns between weekdays and weekends?
-```{r}
 
+The new mean total daily steps is `r meansteps2` and the median is `r mediansteps2`.  The distribution of daily totals is very similar, with only the frequency of daily totals between 10,500 and 11,000 changing.  The average daily total values are also little changed.  
+  
+So, the impact of imputing the missing values in this way is low.  
+  
+## Are there differences in activity patterns between weekdays and weekends?
+Let's recast the second chart, putting in the imputed missing values and splitting it into two panels, one for weekdays and the other for weekend days.
+```{r,fig.width=10}
+library(lubridate)
+impdata$weekpart <- "Weekday"
+impdata[substr(weekdays(ymd(impdata$date)),1,1)=="S",4] <- "Weekend"
+intmeansteps2 <- aggregate(steps ~ interval + weekpart, data = impdata, mean)
+plot4 <- ggplot(intmeansteps2, aes(interval, steps))
+plot4 + geom_line()+ 
+    theme_bw(base_size = 12)+
+    facet_wrap( ~ weekpart, ncol = 1)
 ```
